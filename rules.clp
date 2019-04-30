@@ -21,37 +21,42 @@
 
 ; Ask the user if they have any cpu preferences
 (defrule cpu_pref
-	(need cpu)
+	?req <- (need cpu)
 	=>
+	(retract ?req)
 	(printout t "What is the minimum amount of cores the CPU should have (type '0' if you don't care): ")
 	(assert (cpu_cores_min (read)))
 )
 
 ; Ask the user if they have any gpu preferences
 (defrule gpu_pref
-	(need gpu)
+	?req <- (need gpu)
 	=>
+	(retract ?req)
 	(printout t "What is the minimum amount of memory (in gigabytes) the GPU should have (type '0' if you don't care): ")
 	(assert (gpu_mem_min (read)))
 )
 
 ; Ask the user if they have any ram preferences
 (defrule ram_pref
-	(need ram)
+	?req <- (need ram)
 	=>
+	(retract ?req)
 	(printout t "What is the minimum amount of memory (in gigabytes) that the RAM should have (8 is the recommended minimum): ")
 	(assert (ram_mem_min (read)))
 )
 
 ; Ask the user if they have any hard drive preferences
 (defrule hd_pref
-	(need hd)
+	?req <- (need hd)
 	=>
+	(retract ?req)
 	(printout t "What is the minimum amount of space (in gigabytes) that the hard drive should have (1 terabyte is 1024 gigabytes): ")
 	(assert (hd_mem_min (read)))
 )
 
 ; Ask the user what parts they already have and plan to use in the new build.  For example, they may already have a hard drive, power supply, or gpu
+; Future parts to add: cpu, ram, motherboard, solid state drive
 (defrule current_parts
 	initial-fact
 	=>
@@ -59,20 +64,29 @@
 	(assert (current_parts (readline)))
 )
 
+; Add ram to a build that doesn't have one
+
+; Add cpu to a build that doesn't have one
+
 ; Main build rule
 (defrule build
+	(bind ?price_local 0)
+	(price_max ?higher)
 	(ram_mem_min ?ram_mem_min)
-	(ram (size ?size&:(>= ?size ?ram_mem_min))
-		 (frequency ?frequency)
+
+	?ram <- (ram (size ?size&:(>= ?size ?ram_mem_min))
+				 (frequency ?frequency)
+				 (price ?p&:(< (+ ?p ?price_local) ?higher))
 	)
 	
 	(cpu_cores_min ?cpu_cores_min)
-	(cpu (cores ?cores&:(>= ?cores ?cpu_cores_min))
-		 (chipset ?chipset)
+	?cpu <- (cpu (cores ?cores&:(>= ?cores ?cpu_cores_min))
+				 (chipset ?chipset)
 	)
 	
-	(motherboard (chipset ?chipset)
-				 (ram_freqs ?frequency)				; BUG:  ram_freqs is a linked list, and we need to make sure ?frequency is in it
+	?mobo <- (motherboard (chipset ?chipset)
+						  (ram_freqs ?$ ?frequency ?$)
+						  
 	)
 	=>
 )
@@ -81,12 +95,21 @@
 ; For just cpu, ram, and mobo, the threshold is $250
 ; power supply and hard drive are each $50 extra
 
+; Fill out a basic computer using parts the user has already selected
+
 ; If there aren't any possible builds
+(defrule no_results
+	(salience -100)
+	(test (not (exists (build (status complete)))))
+	=>
+	(printout "Given your preferences, there is no PC that we can build using the parts in our database at this time." crlf)
+	(exit)
+)
 
 (deffacts init
 	(need cpu)
 	(need ram)
 	(need motherboard)
-	(current_price 0)
+	(build (status incomplete))
 )
 
