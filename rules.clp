@@ -15,14 +15,26 @@
 	?phase <- (phase reading)
 	=>
 	(bind ?line (readline testdata))
+	(retract ?phase)
 	(if (neq ?line EOF)
 		then
-			(assert (explode ?line))
+			(bind ?part (explode$ ?line))
+			(assert (part ?part))
+			(assert (phase reading))
+			
 		else
 			(retract ?phase)
 			(close testdata)
 			(assert (phase parsing))
 	)
+)
+
+(defrule explode_freqs
+	?mobo <- (part motherboard ?id ?sock ?freqs ?price)
+	=>
+	(retract ?mobo)
+	(bind ?freqs_mf (explode$ ?freqs))
+	(assert (part motherboard ?id ?sock (create$ ?freqs_mf) ?price))
 )
 
 ;---------------------
