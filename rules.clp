@@ -212,16 +212,24 @@
 )
 
 ; Mark a build as complete if it has all the necessary parts to boot
+; Also a compatiblity check.  We should probably move that into the add_* rules later on so we don't generate so many incomplete build facts
 ; Don't retract the incomplete build, in case it causes the rule to fire again
 (defrule mark_complete
-	(build parts $?parts part_ids $?rest status incomplete)
+	(build parts $?parts part_ids $?part_ids wattage ?w price ?p status complete)
+
 	(test (integerp (member$ motherboard $?parts)))
 	(test (integerp (member$ cpu $?parts)))
 	(test (integerp (member$ ram $?parts)))
+
+	?cpu <- (cpu (id (nth$ (member$ cpu $?parts) $?part_ids)) (socket ?sock))
+	?ram <- (ram (id (nth$ (member$ ram $?parts) $?part_ids)) (frequency ?freq))
+	?mobo <- (motherboard (id (nth$ (member$ motherboard $?parts) $?part_ids)) (socket ?sock) (ram_freqs $?freqs&:(member$ ?freq $?freqs)))
 	=>
 	(assert
 		(build 	parts motherboard $?parts
-			part_ids $?rest
+			part_ids $?part_ids
+			wattage ?w
+			price ?p
 			status complete
 		)
 	)
