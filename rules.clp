@@ -23,11 +23,12 @@
 		else
 			(retract ?phase)
 			(close testdata)
-			(assert (phase parsing))
+			(assert (phase converting))
 	)
 )
 
 (defrule cpu_templ_conv
+	(phase converting)
 	?cpu <- (part cpu ?id ?sock ?cores ?clock ?wattage ?price)
 	=>
 	(retract ?cpu)
@@ -35,6 +36,7 @@
 )
 
 (defrule mobo_templ_conv
+	(phase converting)
 	?mobo <- (part motherboard ?id ?sock ?freqs ?price)
 	=>
 	(retract ?mobo)
@@ -43,6 +45,7 @@
 )
 
 (defrule ram_templ_conv
+	(phase converting)
 	?ram <- (part ram ?id ?sticks ?stick_size ?freq ?price)
 	=>
 	(retract ?ram)
@@ -50,10 +53,19 @@
 )
 
 (defrule hd_templ_conv
+	(phase converting)
 	?hd <- (part hard_drive ?id ?size ?speed ?price)
 	=>
 	(retract ?hd)
 	(assert (hard_drive (id ?id) (size ?size) (speed ?speed) (price ?price)))
+)
+
+(defrule switch_to_querying
+	?phase <- (phase converting)
+	(not (exists (part $?)))
+	=>
+	(retract ?phase)
+	(assert (phase querying))
 )
 
 ;---------------------
@@ -73,8 +85,8 @@
 	(and (exist $?min) (exist $?max))
 	=>
 	(retract ?p)
-	(assert (price_min ?lower))
-	(assert (price_max ?higher))
+	(assert (price_min ?min))
+	(assert (price_max ?max))
 )
 
 ; Ask the user if they have any cpu preferences
@@ -124,6 +136,14 @@
 	=>
 	(printout t "What parts do you not already have and need to use in the computer? Options are hard_drive, power_supply, and gpu, with space delimiters." crlf)
 	(assert (current_parts (readline)))
+)
+
+(defrule switch_to_build
+	?phase <- (phase querying)
+	(not (exists (need $?)))
+	=>
+	(retract ?phase)
+	(assert (phase building))
 )
 
 ;---------------------
@@ -235,7 +255,6 @@
 (deffacts init
 	(need cpu)
 	(need ram)
-	(need motherboard)
 	(build	parts
 		part_ids
 		wattage 0
