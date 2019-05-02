@@ -194,7 +194,7 @@
 	(build parts $?parts&:(not (member$ motherboard $?parts)) part_ids $?part_ids wattage ?w price ?p status incomplete)
 
 	; TODO: motherboard needs to check compatiblity with CPU and RAM if they are already in the build
-	(motherboard (id ?id) (ram_freqs ?freqs_mb) (socket ?sock) (price ?p1))
+	(motherboard (id ?id) (ram_freqs $?freqs_mb) (socket ?sock) (price ?p1))
 
 	(price_min ?lower)
 	(price_max ?higher)
@@ -215,9 +215,9 @@
 ; Don't retract the incomplete build, in case it causes the rule to fire again
 (defrule mark_complete
 	(build parts $?parts part_ids $?rest status incomplete)
-	(member$ motherboard $?parts)
-	(member$ cpu $?parts)
-	(member$ ram $?parts)
+	(test (integerp (member$ motherboard $?parts)))
+	(test (integerp (member$ cpu $?parts)))
+	(test (integerp (member$ ram $?parts)))
 	=>
 	(assert
 		(build 	parts motherboard $?parts
