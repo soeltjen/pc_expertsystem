@@ -20,7 +20,6 @@
 			(bind ?part (explode$ ?line))
 			(assert (part ?part))
 			(assert (phase reading))
-			
 		else
 			(retract ?phase)
 			(close testdata)
@@ -69,7 +68,7 @@
 	(assert (price_pref (read)))
 )
 
-(defrule parse_price_pref 
+(defrule parse_price_pref
 	?p <- (price_pref ?ans $?min $?max)
 	(and (exist $?min) (exist $?max))
 	=>
@@ -90,6 +89,7 @@
 
 ; Ask the user if they have any gpu preferences
 (defrule gpu_pref
+	(phase querying)
 	?req <- (need gpu)
 	=>
 	(retract ?req)
@@ -99,6 +99,7 @@
 
 ; Ask the user if they have any ram preferences
 (defrule ram_pref
+	(phase querying)
 	?req <- (need ram)
 	=>
 	(retract ?req)
@@ -108,6 +109,7 @@
 
 ; Ask the user if they have any hard drive preferences
 (defrule hd_pref
+	(phase querying)
 	?req <- (need hd)
 	=>
 	(retract ?req)
@@ -118,7 +120,7 @@
 ; Ask the user what parts they already have and plan to use in the new build.  For example, they may already have a hard drive, power supply, or gpu
 ; Future parts to add: cpu, ram, motherboard, solid state drive
 (defrule current_parts
-	(initial-fact)
+	(phase querying)
 	=>
 	(printout t "What parts do you not already have and need to use in the computer? Options are hard_drive, power_supply, and gpu, with space delimiters." crlf)
 	(assert (current_parts (readline)))
@@ -131,103 +133,91 @@
 ; Add ram to a build that doesn't have one
 (defrule add_ram
 	(phase building)
-	(build (parts $?parts) (part_numbers $?part_nos) (wattage ?w) (price ?p) (status incomplete))
-	(not (member$ ram (create$ $?parts)
-		 )
-	)
-	
+	(build parts $?parts part_ids $?part_ids wattage ?w price ?p status incomplete)
+	(not (member$ ram $?parts))
+
 	; RAM needs to check compatiblity with motherboard if one is already in the build
-	(ram ?part_no ?sticks ?size_per_stick ?freq ?price)
-	
+	(ram (id ?id) (sticks ?sticks) (stick_size ?stick_size) (frequency ?freq) (price ?p1))
+
 	(price_min ?lower)
 	(price_max ?higher)
 	(test (> (+ ?p ?p1) ?lower))
 	(test (< (+ ?p ?p1) ?higher))
 	=>
-	(assert 
-		(build 	(part_numbers ?part_no $?part_nos)
-				(parts ram $?parts) (wattage ?w)
-				(price (+ ?p ?p1)) (status incomplete)
-		)		
+	(assert
+		(build	parts ram $?parts
+			part_ids ?id $?part_ids
+			wattage ?w
+			price (+ ?p ?p1)
+			status incomplete
+		)
 	)
 )
 
 ; Add cpu to a build that doesn't have one
 (defrule add_cpu
 	(phase building)
-	(build (parts $?parts) (part_numbers $?part_nos) (wattage ?w) (price ?p) (status incomplete))
-	(not (member$ cpu (create$ $?parts)
-		 )
-	)
-	
+	(build parts $?parts part_ids $?part_ids wattage ?w price ?p status incomplete)
+	(not (member$ cpu $?parts))
+
 	; CPU needs to check compatiblity with motherboard if one is already in the build
-	(cpu ?part_no ?sticks ?size_per_stick ?freq ?price)
-	
+	(cpu (id ?id) (socket ?sock) (clock_rate ?clock) (wattage ?wattage) (price ?p1))
+
 	(price_min ?lower)
 	(price_max ?higher)
 	(test (> (+ ?p ?p1) ?lower))
 	(test (< (+ ?p ?p1) ?higher))
 	=>
-	(assert 
-		(build 	(part_numbers ?part_no $?part_nos)
-				(parts cpu $?parts) (wattage ?w)
-				(price (+ ?p ?p1)) (status incomplete)
-		)		
+	(assert
+		(build	parts cpu $?parts
+			part_ids ?id $?part_ids
+			wattage ?w
+			price (+ ?p ?p1)
+			status incomplete
+		)
 	)
 )
 
 ; Add a motherboard to a build that doesn't have one
 (defrule add_motherboard
 	(phase building)
-	(build (parts $?parts) (part_numbers $?part_nos) (wattage ?w) (price ?p) (status incomplete))
-	(not (member$ motherboard (create$ $?parts))
-	)
-	
+	(build parts $?parts part_ids $?part_ids wattage ?w price ?p status incomplete)
+	(not (member$ motherboard $?parts))
+
 	; motherboard needs to check compatiblity with CPU and RAM if they are already in the build
-	(motherboard ?part_no ?socket ?freqs ?price)
-	
+	(motherboard (id ?id) (socket ?sock) (ram_freqs ?freqs_mb) (price ?p1))
+
 	(price_min ?lower)
 	(price_max ?higher)
 	(test (> (+ ?p ?p1) ?lower))
 	(test (< (+ ?p ?p1) ?higher))
 	=>
-	(assert 
-		(build 	(part_numbers ?part_no $?part_nos)
-				(parts motherboard $?parts) (wattage ?w)
-				(price (+ ?p ?p1)) (status incomplete)
-		)		
+	(assert
+		(build 	parts motherboard $?parts
+			part_ids ?id $?part_ids
+			wattage ?w
+			price (+ ?p ?p1)
+			status incomplete
+		)
 	)
 )
 
 ; Mark a build as complete if it has all the necessary parts to boot
 ; Don't retract the incomplete build, in case it causes the rule to fire again
 (defrule mark_complete
-	(build (status incomplete) (cpu ?cpu_p) (ram ?ram_p)
-				 (hard_drive ?hd_p) (motherboard ?m_p) (power_supply ?ps_p))
+	(build parts $?parts part_ids $?rest status incomplete)
+	(member$ motherboard $?parts)
+	(member$ cpu $?parts)
+	(member$ ram $?parts)
+	(member$ motherboard $?parts)
 	=>
-	(assert (build (status complete) (cpu ?cpu_p) (ram ?ram_p)
-				 (hard_drive ?hd_p) (motherboard ?m_p) (power_supply ?ps_p)))
+	(assert
+		(build 	parts motherboard $?parts
+			part_ids $?rest
+			status complete
+		)
+	)
 )
-
-; Main build rule
-;(defrule build
-;	(bind ?price_local 0)
-;	(price_max ?higher)
-;	(ram_mem_min ?ram_mem_min)
-;	?ram <- (ram (size ?size&:(>= ?size ?ram_mem_min))
-;				 (frequency ?frequency)
-;				 (price ?p&:(< (+ ?p ?price_local) ?higher))
-;	)
-;	(cpu_cores_min ?cpu_cores_min)
-;	?cpu <- (cpu (cores ?cores&:(>= ?cores ?cpu_cores_min))
-;				 (chipset ?chipset)
-;	)
-;	?mobo <- (motherboard (chipset ?chipset)
-;						  (ram_freqs ?$ ?frequency ?$)
-;						  
-;	)
-;	=>
-;)
 
 ; If budget is below a certain price, then remove gpu and replace CPU with integrated graphics
 ; For just cpu, ram, and mobo, the threshold is $250
@@ -236,7 +226,7 @@
 ; If there aren't any possible builds
 (defrule no_results
 	(salience -100)
-	(not (exists (build (status complete))))
+	(not (exists (build $? status complete)))
 	=>
 	(printout t "Given your preferences, there is no PC that we can build using the parts in our database at this time." crlf)
 	(exit)
@@ -246,6 +236,10 @@
 	(need cpu)
 	(need ram)
 	(need motherboard)
-	(build (status incomplete) (price 0) (wattage 0) (parts))
+	(build	parts
+		part_ids
+		wattage 0
+		price 0
+		status incomplete)
 )
 
