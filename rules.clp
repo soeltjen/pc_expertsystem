@@ -234,7 +234,7 @@
 
 ; If there aren't any possible builds
 (defrule no_results
-	(salience -100)
+	(declare (salience -100))
 	(not (exists (build $? status complete)))
 	=>
 	(printout t "Given your preferences, there is no PC that we can build using the parts in our database at this time." crlf)
