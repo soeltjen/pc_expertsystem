@@ -148,6 +148,7 @@
 	;(not (member$ ram $?parts))
 
 	; TODO: RAM needs to check compatiblity with motherboard if one is already in the build
+	; TODO: Make sure ram sizes follow user preferences
 	(ram (id ?id) (sticks ?sticks) (stick_size ?stick_size) (frequency ?freq) (price ?p1))
 
 	(price_min ?lower)
@@ -171,6 +172,7 @@
 	(build parts $?parts&:(not (member$ cpu $?parts)) part_ids $?part_ids wattage ?w price ?p status incomplete)
 
 	; TODO: CPU needs to check compatiblity with motherboard if one is already in the build
+	; TODO: Make sure cpu cores match user preferences
 	(cpu (id ?id) (socket ?sock) (clock_rate ?clock) (wattage ?wattage) (price ?p1))
 
 	(price_min ?lower)
