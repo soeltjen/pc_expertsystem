@@ -73,26 +73,26 @@
 ;---------------------
 
 ; Ask the user if they have a budget
+; Ask the user what parts they already have and plan to use in the new build.  For example, they may already have a hard drive, power supply, or gpu
+; Future parts to add: cpu, ram, motherboard, solid state drive
 (defrule price_pref
+	(declare (salience 100))
 	(phase querying)
+	?req <- (ask budget)
 	=>
-	(printout t "Do you have lower and/or upper limit on your budget?  If so, respond with yes and a lower limit and upper limit, or just respond with no: ")
-	(assert (price_pref (read)))
-)
-
-(defrule parse_price_pref
-	?p <- (price_pref ?ans $?min $?max)
-	(and (exist $?min) (exist $?max))
-	=>
-	(retract ?p)
-	(assert (price_min ?min))
-	(assert (price_max ?max))
+	(retract ?req)
+	(printout t "What is the lower limit on your budget: ")
+	(assert (price_min (read)))
+	(printout t "What is the upper limit on your budget (type 5000 if you don't care): ")
+	(assert (price_max (read)))
+	(printout t "What parts do you not already have and need to use in the computer? Options are hard_drive, power_supply, and gpu, with space delimiters." crlf)
+	(assert (current_parts (readline)))
 )
 
 ; Ask the user if they have any cpu preferences
 (defrule cpu_pref
 	(phase querying)
-	?req <- (need cpu)
+	?req <- (ask cpu)
 	=>
 	(retract ?req)
 	(printout t "What is the minimum amount of cores the CPU should have (type '0' if you don't care): ")
@@ -102,7 +102,7 @@
 ; Ask the user if they have any gpu preferences
 (defrule gpu_pref
 	(phase querying)
-	?req <- (need gpu)
+	?req <- (ask gpu)
 	=>
 	(retract ?req)
 	(printout t "What is the minimum amount of memory (in gigabytes) the GPU should have (type '0' if you don't care): ")
@@ -112,7 +112,7 @@
 ; Ask the user if they have any ram preferences
 (defrule ram_pref
 	(phase querying)
-	?req <- (need ram)
+	?req <- (ask ram)
 	=>
 	(retract ?req)
 	(printout t "What is the minimum amount of memory (in gigabytes) that the RAM should have (8 is the recommended minimum): ")
@@ -122,25 +122,16 @@
 ; Ask the user if they have any hard drive preferences
 (defrule hd_pref
 	(phase querying)
-	?req <- (need hd)
+	?req <- (ask hd)
 	=>
 	(retract ?req)
 	(printout t "What is the minimum amount of space (in gigabytes) that the hard drive should have (1 terabyte is 1024 gigabytes): ")
 	(assert (hd_mem_min (read)))
 )
 
-; Ask the user what parts they already have and plan to use in the new build.  For example, they may already have a hard drive, power supply, or gpu
-; Future parts to add: cpu, ram, motherboard, solid state drive
-(defrule current_parts
-	(phase querying)
-	=>
-	(printout t "What parts do you not already have and need to use in the computer? Options are hard_drive, power_supply, and gpu, with space delimiters." crlf)
-	(assert (current_parts (readline)))
-)
-
 (defrule switch_to_build
 	?phase <- (phase querying)
-	(not (exists (need $?)))
+	(not (exists (ask $?)))
 	=>
 	(retract ?phase)
 	(assert (phase building))
@@ -153,10 +144,10 @@
 ; Add ram to a build that doesn't have one
 (defrule add_ram
 	(phase building)
-	(build parts $?parts part_ids $?part_ids wattage ?w price ?p status incomplete)
-	(not (member$ ram $?parts))
+	(build parts $?parts&:(not (member$ ram $?parts)) part_ids $?part_ids wattage ?w price ?p status incomplete)
+	;(not (member$ ram $?parts))
 
-	; RAM needs to check compatiblity with motherboard if one is already in the build
+	; TODO: RAM needs to check compatiblity with motherboard if one is already in the build
 	(ram (id ?id) (sticks ?sticks) (stick_size ?stick_size) (frequency ?freq) (price ?p1))
 
 	(price_min ?lower)
@@ -177,10 +168,9 @@
 ; Add cpu to a build that doesn't have one
 (defrule add_cpu
 	(phase building)
-	(build parts $?parts part_ids $?part_ids wattage ?w price ?p status incomplete)
-	(not (member$ cpu $?parts))
+	(build parts $?parts&:(not (member$ cpu $?parts)) part_ids $?part_ids wattage ?w price ?p status incomplete)
 
-	; CPU needs to check compatiblity with motherboard if one is already in the build
+	; TODO: CPU needs to check compatiblity with motherboard if one is already in the build
 	(cpu (id ?id) (socket ?sock) (clock_rate ?clock) (wattage ?wattage) (price ?p1))
 
 	(price_min ?lower)
@@ -201,11 +191,10 @@
 ; Add a motherboard to a build that doesn't have one
 (defrule add_motherboard
 	(phase building)
-	(build parts $?parts part_ids $?part_ids wattage ?w price ?p status incomplete)
-	(not (member$ motherboard $?parts))
+	(build parts $?parts&:(not (member$ motherboard $?parts)) part_ids $?part_ids wattage ?w price ?p status incomplete)
 
-	; motherboard needs to check compatiblity with CPU and RAM if they are already in the build
-	(motherboard (id ?id) (socket ?sock) (ram_freqs ?freqs_mb) (price ?p1))
+	; TODO: motherboard needs to check compatiblity with CPU and RAM if they are already in the build
+	(motherboard (id ?id) (ram_freqs ?freqs_mb) (socket ?sock) (price ?p1))
 
 	(price_min ?lower)
 	(price_max ?higher)
@@ -229,7 +218,6 @@
 	(member$ motherboard $?parts)
 	(member$ cpu $?parts)
 	(member$ ram $?parts)
-	(member$ motherboard $?parts)
 	=>
 	(assert
 		(build 	parts motherboard $?parts
@@ -239,6 +227,7 @@
 	)
 )
 
+; TODO
 ; If budget is below a certain price, then remove gpu and replace CPU with integrated graphics
 ; For just cpu, ram, and mobo, the threshold is $250
 ; power supply and hard drive are each $50 extra
@@ -253,8 +242,9 @@
 )
 
 (deffacts init
-	(need cpu)
-	(need ram)
+	(ask budget)
+	(ask cpu)
+	(ask ram)
 	(build	parts
 		part_ids
 		wattage 0
