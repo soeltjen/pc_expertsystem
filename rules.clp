@@ -4,7 +4,6 @@
 ;----------------------
 
 (defrule open_datafile
-	(salience 100)
 	(initial-fact)
 	=>
 	(open "testdata" testdata "r")
@@ -29,12 +28,33 @@
 	)
 )
 
-(defrule explode_freqs
+(defrule cpu_templ_conv
+	?cpu <- (part cpu ?id ?sock ?cores ?clock ?wattage ?price)
+	=>
+	(retract ?cpu)
+	(assert (cpu (id ?id) (socket ?sock) (clock_rate ?clock) (wattage ?wattage) (price ?price)))
+)
+
+(defrule mobo_templ_conv
 	?mobo <- (part motherboard ?id ?sock ?freqs ?price)
 	=>
 	(retract ?mobo)
 	(bind ?freqs_mf (explode$ ?freqs))
-	(assert (part motherboard ?id ?sock (create$ ?freqs_mf) ?price))
+	(assert (motherboard (id ?id) (socket ?sock) (ram_freqs ?freqs_mf) (price ?price)))
+)
+
+(defrule ram_templ_conv
+	?ram <- (part ram ?id ?sticks ?stick_size ?freq ?price)
+	=>
+	(retract ?ram)
+	(assert (ram (id ?id) (sticks ?sticks) (stick_size ?stick_size) (frequency ?freq) (price ?price)))
+)
+
+(defrule hd_templ_conv
+	?hd <- (part hard_drive ?id ?size ?speed ?price)
+	=>
+	(retract ?hd)
+	(assert (hard_drive (id ?id) (size ?size) (speed ?speed) (price ?price)))
 )
 
 ;---------------------

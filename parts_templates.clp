@@ -1,7 +1,7 @@
 
 (deftemplate cpu
-	(slot name)
-	(slot chipset)
+	(slot id)
+	(slot socket)
 	(slot cores (type INTEGER))
 	(slot threads (type INTEGER))
 	(slot clock_rate (type NUMBER))
@@ -12,14 +12,18 @@
 )
 
 (deftemplate ram
-	(slot size (type INTEGER))
+	(slot id)
+	(slot sticks)
+	(slot stick_size (type INTEGER))
 	(slot standard (allowed-symbols ddr4))
 	(slot frequency (type NUMBER))
 	(slot channelling
 		(allowed-symbols single dual quad))
+	(slot price)
 )
 
 (deftemplate gpu
+	(slot id)
 	(slot mem_size)
 	(slot mem_type)
 	(slot wattage)
@@ -27,6 +31,7 @@
 )
 
 (deftemplate hard_drive
+	(slot id)
 	(slot size)
 	(slot speed)
 	(slot connection (allowed-symbols pci sata usb))
@@ -34,11 +39,12 @@
 )
 
 (deftemplate motherboard
+	(slot id)
 	(slot ram_slots (type INTEGER))
 	(slot ram_max (type INTEGER))
 	(slot ram_standard (allowed-symbols ddr4))
 	(multislot ram_freqs (type INTEGER))
-	(slot chipset)
+	(slot socket)
 	(slot form_factor (allowed-symbols atx mini-atx micro-atx))
 	(slot pci_slots (type INTEGER))
 	(slot price (type NUMBER))
